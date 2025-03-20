@@ -18,21 +18,9 @@ my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT
 # Convert Snowflake dataframe to pandas
 pd_df = my_dataframe.to_pandas()
 
-# Required Orders for DORA Check (Exact Order of Fruits)
-orders = [
-    {'name': 'Kevin', 'ingredients': 'Apples,Lime,Ximenia', 'order_filled': FALSE},
-    {'name': 'Divya', 'ingredients': 'Dragon Fruit,Guava Figs, Jackfruit, Blueberries', 'order_filled': TRUE},
-    {'name': 'Xi', 'ingredients': 'Vanilla Fruit,Nectarine', 'order_filled': TRUE},
-]
 
-# Function to insert orders into Snowflake
-def insert_order(name, ingredients, filled):
-    query = f"""
-        INSERT INTO smoothies.public.orders (name_on_order, ingredients, order_filled)
-        VALUES ('{name}', '{ingredients}', {filled});
-    """
-    session.sql(query).collect()
-    st.success(f"Order for {name} inserted successfully!")
+
+
 
 # Function to fetch and display nutritional information for selected fruits
 def display_nutritional_info(fruit_list):
