@@ -26,37 +26,39 @@ cnx = st.connection("snowflake")
 session = cnx.session()  # Create Snowflake session
 
 # Retrieve available fruits from Snowflake
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))
+fruit_data = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON')).collect()
 
-# Convert Snowflake dataframe to pandas
-pd_df = my_dataframe.to_pandas()
+# Convert collected data into a dictionary
+fruit_dict = {row['FRUIT_NAME']: row['SEARCH_ON'] for row in fruit_data}
+fruit_names = list(fruit_dict.keys())
 
 # Multiselect widget for choosing ingredients (up to 5 ingredients)
 ingredients_list = st.multiselect(
     'Choose up to 5 ingredients:',
-    options=[fruit[0] for fruit in my_dataframe.collect()]  # Collecting fruit names from the Snowflake table
+    options=fruit_names  # Use properly collected fruit names
 )
 
 # Create an ingredients string and nutritional info display
 if ingredients_list:
-    ingredients_string = ', '.join(ingredients_list)  # Fix: Join ingredients with commas
+    ingredients_string = ', '.join(ingredients_list)  # Fix: Use commas instead of spaces
 
     # Debugging: Show formatted ingredients before inserting
-    st.write("Ingredients List:", ingredients_list)
+    st.write("Selected Ingredients:", ingredients_list)
     st.write("Formatted Ingredients String:", ingredients_string)
 
     # Loop over the selected fruits and display their nutritional info
     for fruit_chosen in ingredients_list:
-        search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
+        search_on = fruit_dict.get(fruit_chosen, None)
 
-        # Display nutritional information for each selected fruit
-        st.subheader(fruit_chosen + ' Nutritional Information')
-        smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/" + search_on)
+        if search_on:
+            # Display nutritional information for each selected fruit
+            st.subheader(f"{fruit_chosen} Nutritional Information")
+            smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/" + search_on)
 
-        if smoothiefroot_response.status_code == 200:
-            st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
-        else:
-            st.error(f"Failed to fetch data for {fruit_chosen}")
+            if smoothiefroot_response.status_code == 200:
+                st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+            else:
+                st.error(f"Failed to fetch data for {fruit_chosen}")
 
     # Button for submitting the order
     time_to_insert = st.button('Submit Order')
@@ -64,7 +66,7 @@ if ingredients_list:
     if time_to_insert:
         if ingredients_string and name_on_order:
             try:
-                # Use parameterized SQL query (safer and avoids formatting issues)
+                # Insert the correct order into Snowflake using parameterized query
                 session.sql("""
                     INSERT INTO smoothies.public.orders (name_on_order, ingredients, order_filled)
                     VALUES (?, ?, ?)
@@ -72,7 +74,10 @@ if ingredients_list:
                 
                 # Success message
                 st.success('Your Smoothie is ordered!', icon="✅")
+                st.write(f"Inserted Order: {name_on_order} | {ingredients_string}")
             except Exception as e:
                 st.error(f"Error: {e}")
         else:
-             st.warning("Please select ingredients for your smoothie.")
+            st.error("Please enter a name and select ingredients before submitting.")
+else:
+    st.warning("Please select ingredients for your smoothie.")
