@@ -1,6 +1,7 @@
 import streamlit as st
 from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
+import requests
 
 # Helpful links for references
 helpful_links = [
@@ -23,17 +24,18 @@ st.write("The name on your smoothie will be:", name_on_order)
 cnx = st.connection("snowflake")
 session = cnx.session()
 
-
 # Get the active session
 session = get_active_session()
 
 # Retrieve available fruits from Snowflake
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
 
-pd_df=my_dataframe.to_pandas()
+# Convert Snowflake dataframe to pandas
+pd_df = my_dataframe.to_pandas()
+
+# Display available fruits
 st.dataframe(pd_df)
 st.stop()
-
 
 # Multiselect widget for choosing ingredients (up to 5 ingredients)
 ingredients_list = st.multiselect(
@@ -44,17 +46,21 @@ ingredients_list = st.multiselect(
 # Create an ingredients string
 if ingredients_list:
     ingredients_string = ' '.join(ingredients_list)  # Join all selected fruits with spaces
-   for fruit_chosen in ingredients_list:
-     ingredients_string += fruit_chosen + ' '
-     
-     search_on=pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
-     #st.write('The search value for ', fruit_chosen,' is ', search_on, '.')
 
-     st.subheader(fruit_chosen + 'Nutritional information')
-     smoothiefroot_response = requests.get("https://my.smoothiefroot.com/api/fruit/" + search_on)
-     sf_df = st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+    # Loop over the selected fruits and display their nutritional info
+    for fruit_chosen in ingredients_list:
+        search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
 
-   # SQL insert statement to add the order to Snowflake
+        # Display nutritional information for each selected fruit
+        st.subheader(fruit_chosen + ' Nutritional information')
+        smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{search_on}")
+        
+        if smoothiefroot_response.status_code == 200:
+            st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+        else:
+            st.error(f"Failed to fetch data for {fruit_chosen}")
+
+    # SQL insert statement to add the order to Snowflake
     my_insert_stmt = f"""
     INSERT INTO smoothies.public.orders(ingredients, name_on_order)
     VALUES ('{ingredients_string}', '{name_on_order}')
