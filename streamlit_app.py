@@ -24,15 +24,17 @@ st.write("The name on your smoothie will be:", name_on_order)
 cnx = st.connection("snowflake")
 session = cnx.session()
 
-
 # Retrieve available fruits from Snowflake
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))  # Ensure SEARCH_ON is selected
 
 # Convert Snowflake dataframe to pandas
 pd_df = my_dataframe.to_pandas()
 
 # Display available fruits as a dataframe
 st.dataframe(pd_df)
+
+# Debugging step: Show columns of the DataFrame
+st.write("Columns in the DataFrame:", pd_df.columns)
 
 # Multiselect widget for choosing ingredients (up to 5 ingredients)
 ingredients_list = st.multiselect(
@@ -46,16 +48,20 @@ if ingredients_list:
 
     # Loop over the selected fruits and display their nutritional info
     for fruit_chosen in ingredients_list:
-        search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
+        # Ensure 'SEARCH_ON' column exists
+        if 'SEARCH_ON' in pd_df.columns:
+            search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
 
-        # Display nutritional information for each selected fruit
-        st.subheader(fruit_chosen + ' Nutritional information')
-        smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{search_on}")
-        
-        if smoothiefroot_response.status_code == 200:
-            st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+            # Display nutritional information for each selected fruit
+            st.subheader(fruit_chosen + ' Nutritional information')
+            smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{search_on}")
+
+            if smoothiefroot_response.status_code == 200:
+                st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
+            else:
+                st.error(f"Failed to fetch data for {fruit_chosen}")
         else:
-            st.error(f"Failed to fetch data for {fruit_chosen}")
+            st.error(f"Column 'SEARCH_ON' is missing in the DataFrame. Please check the Snowflake table.")
 
     # SQL insert statement to add the order to Snowflake
     my_insert_stmt = f"""
