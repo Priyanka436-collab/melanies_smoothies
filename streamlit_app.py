@@ -21,12 +21,9 @@ name_on_order = st.text_input('Name on smoothie:')
 st.write("The name on your smoothie will be:", name_on_order)
 
 # Ensure only one active session is created
-try:
-    # Fetch the active Snowflake session only once
-    session = get_active_session()  # Ensure only one active session
-except Exception as e:
-    st.error(f"Error while fetching Snowflake session: {str(e)}")
-    st.stop()  # Stop the app execution if session cannot be created
+cnx = st.connection("snowflake")
+session = cnx.session()
+
 
 # Retrieve available fruits from Snowflake
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
