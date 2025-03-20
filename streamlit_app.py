@@ -21,9 +21,8 @@ st.write("Choose the fruits you want in your smoothie!")
 name_on_order = st.text_input('Name on smoothie:')
 st.write("The name on your smoothie will be:", name_on_order)
 
-# Connect to Snowflake session
-cnx = st.connection("snowflake")
-session = cnx.session()  # This creates the active session, no need for get_active_session()
+# Connect to Snowflake session using get_active_session
+session = get_active_session()  # This retrieves the active session correctly
 
 # Retrieve available fruits from Snowflake
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
