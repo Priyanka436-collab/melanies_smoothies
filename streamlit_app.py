@@ -26,7 +26,7 @@ cnx = st.connection("snowflake")
 session = cnx.session()
 
 # Get the active session from Snowflake
-session = get_active_session()
+#session = get_active_session()
 
 # Retrieve available fruits from Snowflake
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
