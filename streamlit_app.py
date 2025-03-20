@@ -23,10 +23,7 @@ st.write("The name on your smoothie will be:", name_on_order)
 
 # Connect to Snowflake session
 cnx = st.connection("snowflake")
-session = cnx.session()
-
-# Get the active session from Snowflake
-#session = get_active_session()
+session = cnx.session()  # This creates the active session, no need for get_active_session()
 
 # Retrieve available fruits from Snowflake
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
@@ -76,7 +73,7 @@ if ingredients_list:
     if time_to_insert:
         if ingredients_string and name_on_order:
             # Execute the SQL query to insert the order into the Snowflake database
-            session.sql(my_insert_stmt).collect()
+            session.sql(my_insert_stmt).collect()  # Execute the SQL insert statement
             
             # Display a success message
             st.success('Your Smoothie is ordered!', icon="✅")
