@@ -1,4 +1,5 @@
 import streamlit as st
+from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
 import requests
 
@@ -22,19 +23,16 @@ st.write("The name on your smoothie will be:", name_on_order)
 
 # Ensure only one active session is created
 cnx = st.connection("snowflake")
-session = cnx.session()
+session = cnx.session()  # This creates the active session, no need for get_active_session()
 
 # Retrieve available fruits from Snowflake
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'), col('SEARCH_ON'))  # Ensure SEARCH_ON is selected
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
 
 # Convert Snowflake dataframe to pandas
 pd_df = my_dataframe.to_pandas()
 
 # Display available fruits as a dataframe
 st.dataframe(pd_df)
-
-# Debugging step: Show columns of the DataFrame
-st.write("Columns in the DataFrame:", pd_df.columns)
 
 # Multiselect widget for choosing ingredients (up to 5 ingredients)
 ingredients_list = st.multiselect(
@@ -48,28 +46,27 @@ if ingredients_list:
 
     # Loop over the selected fruits and display their nutritional info
     for fruit_chosen in ingredients_list:
-        # Ensure 'SEARCH_ON' column exists
-        if 'SEARCH_ON' in pd_df.columns:
-            search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
+        search_on = pd_df.loc[pd_df['FRUIT_NAME'] == fruit_chosen, 'SEARCH_ON'].iloc[0]
 
-            # Display nutritional information for each selected fruit
-            st.subheader(fruit_chosen + ' Nutritional information')
-            smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{search_on}")
-
-            if smoothiefroot_response.status_code == 200:
-                st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
-            else:
-                st.error(f"Failed to fetch data for {fruit_chosen}")
+        # Display nutritional information for each selected fruit
+        st.subheader(fruit_chosen + ' Nutritional information')
+        smoothiefroot_response = requests.get(f"https://my.smoothiefroot.com/api/fruit/{search_on}")
+        
+        if smoothiefroot_response.status_code == 200:
+            st.dataframe(data=smoothiefroot_response.json(), use_container_width=True)
         else:
-            st.error(f"Column 'SEARCH_ON' is missing in the DataFrame. Please check the Snowflake table.")
+            st.error(f"Failed to fetch data for {fruit_chosen}")
 
     # SQL insert statement to add the order to Snowflake
+    # Ensure that the 'order_FILLED' field is inserted as a string or BOOLEAN as required by your schema
+    # Here, we're using 'FALSE' and 'TRUE' for a string-based boolean representation
+
     my_insert_stmt = f"""
-    INSERT INTO smoothies.public.orders(ingredients, name_on_order)
-    VALUES ('{ingredients_string}', '{name_on_order}')
+    INSERT INTO smoothies.public.orders (name_on_order, ingredients, order_FILLED)
+    VALUES ('{name_on_order}', '{ingredients_string}', 'FALSE');
     """
     
-    # Display the SQL Insert statement (optional for debugging)
+    # Display the SQL Insert statement for debugging
     st.write("Prepared SQL Insert Statement:")
     st.write(my_insert_stmt)
 
@@ -78,11 +75,15 @@ if ingredients_list:
 
     if time_to_insert:
         if ingredients_string and name_on_order:
-            # Execute the SQL query to insert the order into the Snowflake database
-            session.sql(my_insert_stmt).collect()  # Execute the SQL insert statement
-            
-            # Display a success message
-            st.success('Your Smoothie is ordered!', icon="✅")
+            try:
+                # Execute the SQL query to insert the order into the Snowflake database
+                result = session.sql(my_insert_stmt).collect()  # Execute the SQL insert statement
+                
+                # Display a success message
+                st.success('Your Smoothie is ordered!', icon="✅")
+                st.write(f"SQL Query Result: {result}")
+            except Exception as e:
+                st.error(f"Error: {e}")
         else:
             st.error("Please fill out both the name and select ingredients before submitting.")
 else:
