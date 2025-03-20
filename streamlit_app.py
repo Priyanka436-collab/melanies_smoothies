@@ -63,7 +63,7 @@ if ingredients_list:
     # Here, we're using 'FALSE' and 'TRUE' for a string-based boolean representation
 
     my_insert_stmt = f"""
-    INSERT INTO smoothies.public.orders (name_on_order, ingredients, order_FILLED)
+    INSERT INTO smoothies.public.orders (name_on_order, ingredients, order_filled)
     VALUES ('{name_on_order}', '{ingredients_string}', FALSE);
     """
     
