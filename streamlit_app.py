@@ -26,13 +26,14 @@ cnx = st.connection("snowflake")
 session = cnx.session()  # This creates the active session, no need for get_active_session()
 
 # Retrieve available fruits from Snowflake
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'),col('SEARCH_ON'))
 
 # Convert Snowflake dataframe to pandas
 pd_df = my_dataframe.to_pandas()
 
 # Display available fruits as a dataframe
-st.dataframe(pd_df)
+#st.dataframe(pd_df)
+#st.stop()
 
 # Multiselect widget for choosing ingredients (up to 5 ingredients)
 ingredients_list = st.multiselect(
