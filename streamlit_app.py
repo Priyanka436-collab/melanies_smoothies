@@ -1,5 +1,4 @@
 import streamlit as st
-from snowflake.snowpark.context import get_active_session
 from snowflake.snowpark.functions import col
 import requests
 
@@ -21,12 +20,13 @@ st.write("Choose the fruits you want in your smoothie!")
 name_on_order = st.text_input('Name on smoothie:')
 st.write("The name on your smoothie will be:", name_on_order)
 
-# Connect to Snowflake session
+# Ensure only one active session is created
 try:
+    # Fetch the active Snowflake session only once
     session = get_active_session()  # Ensure only one active session
 except Exception as e:
     st.error(f"Error while fetching Snowflake session: {str(e)}")
-    st.stop()
+    st.stop()  # Stop the app execution if session cannot be created
 
 # Retrieve available fruits from Snowflake
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
