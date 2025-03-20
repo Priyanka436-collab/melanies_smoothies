@@ -75,4 +75,4 @@ if ingredients_list:
             except Exception as e:
                 st.error(f"Error: {e}")
         else:
-            st.error("Please enter a name and select ingredi
+             st.warning("Please select ingredients for your smoothie.")
